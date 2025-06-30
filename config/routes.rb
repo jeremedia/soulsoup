@@ -1,11 +1,7 @@
 Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
-      resources :incarnations, only: [] do
-        collection do
-          post :request
-        end
-      end
+      resources :incarnations, only: [:create]
       
       resources :events, only: [] do
         collection do

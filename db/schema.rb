@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_30_015258) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_30_033750) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -55,8 +55,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_30_015258) do
     t.datetime "updated_at", null: false
     t.index ["ended_at"], name: "index_incarnations_on_ended_at"
     t.index ["forge_type"], name: "index_incarnations_on_forge_type"
+    t.index ["game_session_id", "ended_at"], name: "index_incarnations_on_session_and_ended"
     t.index ["game_session_id"], name: "index_incarnations_on_game_session_id"
     t.index ["incarnation_id"], name: "index_incarnations_on_incarnation_id", unique: true
+    t.index ["soul_id", "ended_at"], name: "index_incarnations_on_soul_and_ended"
     t.index ["soul_id"], name: "index_incarnations_on_soul_id"
   end
 
@@ -71,6 +73,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_30_015258) do
     t.datetime "updated_at", null: false
     t.index ["related_soul_id"], name: "index_soul_relationships_on_related_soul_id"
     t.index ["relationship_type"], name: "index_soul_relationships_on_relationship_type"
+    t.index ["soul_id", "related_soul_id"], name: "index_soul_relationships_unique", unique: true
     t.index ["soul_id"], name: "index_soul_relationships_on_soul_id"
   end
 
@@ -83,6 +86,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_30_015258) do
     t.float "current_grace_level"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["current_grace_level"], name: "index_souls_on_current_grace_level"
     t.index ["soul_id"], name: "index_souls_on_soul_id", unique: true
     t.index ["total_incarnations"], name: "index_souls_on_total_incarnations"
   end

@@ -50,16 +50,22 @@ class Soul < ApplicationRecord
   end
   
   def incarnate!(forge_type:, game_session_id:)
-    # End any current incarnation
-    current_incarnation&.end_incarnation!
-    
-    # Create new incarnation
-    incarnations.create!(
-      forge_type: forge_type,
-      game_session_id: game_session_id,
-      started_at: Time.current,
-      modifiers: compute_modifiers_for_forge(forge_type)
-    )
+    # Lock this soul record for update to prevent concurrent incarnations
+    with_lock do
+      # Double-check no active incarnation exists
+      if incarnations.active.exists?
+        Rails.logger.warn "Soul #{soul_id} already has active incarnation"
+        raise ActiveRecord::RecordInvalid.new(self), "Soul already has active incarnation"
+      end
+      
+      # Create new incarnation
+      incarnations.create!(
+        forge_type: forge_type,
+        game_session_id: game_session_id,
+        started_at: Time.current,
+        modifiers: compute_modifiers_for_forge(forge_type)
+      )
+    end
   end
   
   def personality_traits
@@ -94,6 +100,9 @@ class Soul < ApplicationRecord
   def initialize_genome
     return if genome.present?
     
+    Rails.logger.info "Initializing genome for soul #{soul_id}..."
+    start_time = Time.current
+    
     # Initialize 256-dimensional genome with random values
     self.genome = {}
     256.times do |i|
@@ -109,13 +118,20 @@ class Soul < ApplicationRecord
     self.genome["strategic_thinking"] = genome["gene_5"]
     self.genome["risk_tolerance"] = genome["gene_6"]
     self.genome["social_orientation"] = genome["gene_7"]
+    
+    Rails.logger.info "Genome initialization took: #{(Time.current - start_time) * 1000}ms"
   end
   
   def compute_personality_vector
     # This will be enhanced to use embeddings from the genome
     # For now, just use the first 256 genome values directly
+    Rails.logger.info "Computing personality vector for soul #{soul_id}..."
+    start_time = Time.current
+    
     vector = 256.times.map { |i| genome["gene_#{i}"] || 0.0 }
     self.personality_vector = vector
+    
+    Rails.logger.info "Personality vector computation took: #{(Time.current - start_time) * 1000}ms"
   end
   
   def compute_modifiers_for_forge(forge_type)
