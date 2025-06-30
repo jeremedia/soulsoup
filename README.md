@@ -1,6 +1,10 @@
-# Soulsoup - Soul Persistence Backend
+# 🗄️ Soulsoup - Soul Persistence Backend
 
 Soulsoup is the Rails 8 backend for the Soulforge Universe, managing persistent AI souls that learn and evolve through multiple incarnations across different experiential forges.
+
+**Repository**: https://github.com/jeremedia/soulsoup  
+**Frontend Game**: https://github.com/jeremedia/soulforge_battle  
+**Project Board**: https://github.com/users/jeremedia/projects/1
 
 ## Overview
 
