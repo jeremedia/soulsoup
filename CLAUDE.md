@@ -2,6 +2,12 @@
 
 This document provides context for Claude Code sessions working on the Soulsoup Rails API that powers soul persistence and lifecycle management.
 
+## 🤖 Claude Code Context
+This project uses a context awareness system. 
+- **GitHub Project Board**: https://github.com/users/jeremedia/projects/1
+- **Quick Status**: Run `../scripts/claude-status.sh` from parent directory
+- **Current Sprint**: Check `../PROJECT_STATUS.md` for v0.2 work
+
 ## Quick Start
 
 ```bash
