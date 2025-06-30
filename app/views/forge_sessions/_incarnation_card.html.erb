@@ -15,9 +15,9 @@
       <span class="label">Duration:</span>
       <span class="value">
         <% if incarnation.ended_at %>
-          <%= time_ago_in_words(incarnation.ended_at, incarnation.started_at) %>
+          <%= distance_of_time_in_words(incarnation.started_at, incarnation.ended_at) %>
         <% else %>
-          <%= time_ago_in_words(incarnation.started_at) %>
+          <%= time_ago_in_words(incarnation.started_at) %> ago
         <% end %>
       </span>
     </div>
