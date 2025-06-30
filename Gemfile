@@ -49,7 +49,7 @@ gem "neighbor" # pg_vector support
 gem "nanoid", "~> 2.0" # For generating soul IDs
 
 # LLM integrations
-gem "ruby-openai", "~> 7.0"
+gem "ruby-openai", "~> 8.1"
 gem "ollama-ai", "~> 1.0"
 
 # API and structured data
