@@ -1,0 +1,110 @@
+<div id="team_<%= team %>" class="team-panel">
+  <div class="team-header">
+    <h3 class="team-name <%= team %>"><%= team.capitalize %> Team</h3>
+    <div class="team-counts">
+      <span class="alive-count"><%= team_data[:active].count %> Active</span>
+      <span class="dead-count"><%= team_data[:deceased].count %> Deceased</span>
+    </div>
+  </div>
+  
+  <div class="team-columns">
+    <div class="incarnations-column">
+      <h4>Active Souls</h4>
+      <div class="incarnations-list">
+        <% team_data[:active].each do |incarnation| %>
+          <%= render "incarnation_card", incarnation: incarnation, status: "active" %>
+        <% end %>
+        <% if team_data[:active].empty? %>
+          <div class="empty-state">No active souls</div>
+        <% end %>
+      </div>
+    </div>
+    
+    <div class="incarnations-column">
+      <h4>Deceased Souls</h4>
+      <div class="incarnations-list">
+        <% team_data[:deceased].each do |incarnation| %>
+          <%= render "incarnation_card", incarnation: incarnation, status: "deceased" %>
+        <% end %>
+        <% if team_data[:deceased].empty? %>
+          <div class="empty-state">No deceased souls</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.team-panel {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 5px;
+  padding: 1rem;
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #333;
+}
+
+.team-name {
+  margin: 0;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.team-name.red { color: #f66; }
+.team-name.blue { color: #66f; }
+.team-name.green { color: #6f6; }
+.team-name.yellow { color: #ff6; }
+.team-name.pink { color: #f6f; }
+
+.team-counts {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+}
+
+.alive-count {
+  color: #0f0;
+  font-weight: bold;
+}
+
+.dead-count {
+  color: #f66;
+  font-weight: bold;
+}
+
+.team-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.incarnations-column h4 {
+  color: #ccc;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+}
+
+.incarnations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.empty-state {
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.8rem;
+}
+</style>

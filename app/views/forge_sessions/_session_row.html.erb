@@ -1,0 +1,117 @@
+<div id="session_<%= session.id %>" class="session-card">
+  <%= link_to session, class: "session-link" do %>
+    <div class="session-header">
+      <h3><%= session.forge.name %></h3>
+      <span class="session-status <%= session.status %>"><%= session.status.titleize %></span>
+    </div>
+    
+    <div class="session-details">
+      <div class="session-id">Session: <%= session.session_id %></div>
+      <div class="participants">
+        Participants: <%= session.incarnations.active.count %>/<%= session.forge.max_participants %>
+      </div>
+      <div class="duration">
+        <% if session.started_at %>
+          Duration: <%= time_ago_in_words(session.started_at) %>
+        <% else %>
+          Created: <%= time_ago_in_words(session.created_at) %> ago
+        <% end %>
+      </div>
+    </div>
+    
+    <div class="team-summary">
+      <% session.teams_list.each do |team| %>
+        <div class="team-count">
+          <span class="team-name <%= team %>"><%= team.capitalize %></span>
+          <span class="counts">
+            <%= session.team_alive_count(team) %> alive / 
+            <%= session.team_dead_count(team) %> dead
+          </span>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.session-card {
+  background: #111;
+  border: 1px solid #333;
+  padding: 1rem;
+  border-radius: 5px;
+  transition: border-color 0.2s;
+}
+
+.session-card:hover {
+  border-color: #0f0;
+}
+
+.session-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.session-header h3 {
+  color: #0f0;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.session-status {
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.session-status.waiting { background: #fa0; color: #000; }
+.session-status.active { background: #0f0; color: #000; }
+.session-status.completed { background: #666; color: #fff; }
+.session-status.cancelled { background: #f00; color: #fff; }
+
+.session-details {
+  font-size: 0.9rem;
+  color: #ccc;
+  margin-bottom: 0.5rem;
+}
+
+.session-details > div {
+  margin-bottom: 0.2rem;
+}
+
+.team-summary {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+}
+
+.team-count {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.team-name {
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.team-name.red { color: #f66; }
+.team-name.blue { color: #66f; }
+.team-name.green { color: #6f6; }
+.team-name.yellow { color: #ff6; }
+.team-name.pink { color: #f6f; }
+
+.counts {
+  color: #999;
+}
+</style>

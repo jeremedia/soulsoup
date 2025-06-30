@@ -56,6 +56,9 @@ gem "ollama-ai", "~> 1.0"
 gem "jsonb_accessor", "~> 1.0" # JSONB helpers
 gem "alba", "~> 3.0" # Fast JSON serialization
 
+# Pagination
+gem "kaminari", "~> 1.2"
+
 # Background processing (using Solid Queue from Rails 8)
 # Authentication (to be added later)
 # gem "devise", "~> 4.9"
@@ -74,4 +77,11 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+  
+  # Better error pages with REPL & variable inspection
+  gem "better_errors"
+  gem "binding_of_caller" # Required for better_errors advanced features
+  
+  # Process manager for running multiple services
+  gem "foreman"
 end

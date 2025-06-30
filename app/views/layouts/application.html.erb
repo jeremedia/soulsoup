@@ -23,6 +23,22 @@
   </head>
 
   <body>
-    <%= yield %>
+    <% if controller_name == 'dashboard' || controller_name == 'forge_sessions' %>
+      <div class="container">
+        <header>
+          <h1>Soulforge Universe</h1>
+          <nav>
+            <%= link_to "Overview", dashboard_path, class: current_page?(dashboard_path) ? "active" : "" %>
+            <%= link_to "Souls", dashboard_souls_path, class: current_page?(dashboard_souls_path) ? "active" : "" %>
+            <%= link_to "Incarnations", incarnations_dashboard_path, class: current_page?(incarnations_dashboard_path) ? "active" : "" %>
+            <%= link_to "Forge Sessions", forge_sessions_path, class: controller_name == 'forge_sessions' ? "active" : "" %>
+          </nav>
+        </header>
+        
+        <%= yield %>
+      </div>
+    <% else %>
+      <%= yield %>
+    <% end %>
   </body>
 </html>

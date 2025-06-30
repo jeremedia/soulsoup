@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(rails runner:*)",
+      "Bash(bundle install)"
+    ],
+    "deny": []
+  }
+}

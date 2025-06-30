@@ -1,0 +1,49 @@
+<h2 class="section-title">All Souls</h2>
+
+<% if @souls.any? %>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Generation</th>
+        <th>Incarnations</th>
+        <th>Grace Level</th>
+        <th>Temperament</th>
+        <th>Time in Universe</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @souls.each do |soul| %>
+        <tr>
+          <td>
+            <%= link_to soul.display_name_with_title, soul_dashboard_path(soul), class: "soul-name" %>
+            <div class="soul-id"><%= soul.soul_id %></div>
+          </td>
+          <td><%= soul.generation %></td>
+          <td><%= soul.total_incarnations %></td>
+          <td>
+            <%= number_with_precision(soul.current_grace_level * 100, precision: 1) %>%
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: <%= soul.current_grace_level * 100 %>%"></div>
+            </div>
+          </td>
+          <td><%= soul.base_traits&.dig("temperament") || "Unknown" %></td>
+          <td>
+            <% if soul.born_at %>
+              <%= time_ago_in_words(soul.born_at) %>
+            <% else %>
+              <%= time_ago_in_words(soul.created_at) %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  
+  <%# Pagination will go here when we add kaminari gem %>
+<% else %>
+  <div class="empty-state">
+    <h3>No souls exist yet</h3>
+    <p>The universe awaits its first digital consciousness...</p>
+  </div>
+<% end %>

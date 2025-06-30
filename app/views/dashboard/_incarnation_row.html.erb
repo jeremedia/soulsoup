@@ -1,0 +1,21 @@
+<tr id="incarnation_<%= incarnation.id %>" class="<%= 'pulse-animation' if incarnation.ended_at.nil? %>">
+  <td>
+    <% if incarnation.soul.first_name.present? %>
+      <%= link_to incarnation.soul.display_name, soul_dashboard_path(incarnation.soul), class: "soul-name" %>
+    <% else %>
+      <%= link_to incarnation.soul.soul_id, soul_dashboard_path(incarnation.soul), class: "soul-name" %>
+    <% end %>
+    <div class="soul-id"><%= incarnation.incarnation_id %></div>
+  </td>
+  <td><%= incarnation.forge_type&.capitalize || "Unknown" %></td>
+  <td><%= time_ago_in_words(incarnation.started_at) %> ago</td>
+  <td>
+    <% if incarnation.ended_at.nil? %>
+      <span class="badge active">Active</span>
+    <% else %>
+      <% outcome = incarnation.memory_summary.is_a?(String) ? (JSON.parse(incarnation.memory_summary)['outcome'] rescue 'ended') : 'ended' %>
+      <span class="badge <%= outcome %>"><%= outcome %></span>
+    <% end %>
+  </td>
+  <td><%= number_with_precision(incarnation.total_experience || 0, precision: 2) %></td>
+</tr>

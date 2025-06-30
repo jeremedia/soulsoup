@@ -1,45 +1,62 @@
 namespace :souls do
-  desc "Create a pool of souls for incarnation"
-  task create_pool: :environment do
-    count = ENV['COUNT'] || 50
-    count = count.to_i
+  desc "Generate names for existing souls that don't have them"
+  task generate_names: :environment do
+    souls_without_names = Soul.where(first_name: nil)
     
-    puts "Creating #{count} souls..."
+    puts "Found #{souls_without_names.count} souls without names..."
     
-    count.times do |i|
-      Soul.create!(
-        total_incarnations: 0,
-        current_grace_level: 0.0
-      )
-      print '.' if i % 10 == 0
+    souls_without_names.find_each do |soul|
+      soul.generate_personal_info
+      puts "Generated name for soul #{soul.soul_id}: #{soul.full_name}"
     end
     
-    puts "\nCreated #{Soul.count} total souls"
-    puts "Available souls: #{Soul.left_joins(:incarnations).where(incarnations: { id: nil }).count}"
+    puts "Done! All souls now have names."
   end
   
-  desc "Show soul statistics"
-  task stats: :environment do
-    puts "Soul Statistics:"
-    puts "----------------"
-    puts "Total souls: #{Soul.count}"
-    puts "Total incarnations: #{Incarnation.count}"
-    puts "Active incarnations: #{Incarnation.active.count}"
-    puts "Available souls: #{Soul.left_joins(:incarnations).where(incarnations: { id: nil }).count}"
-    puts "Souls with incarnations: #{Soul.joins(:incarnations).distinct.count}"
-  end
-  
-  desc "Clean up stuck incarnations"
-  task cleanup: :environment do
-    stuck = Incarnation.active.where("started_at < ?", 1.hour.ago)
-    count = stuck.count
+  desc "Generate personal info for souls that don't have it"
+  task populate_personal_info: :environment do
+    souls_without_names = Soul.where(first_name: nil)
     
-    if count > 0
-      puts "Found #{count} stuck incarnations"
-      stuck.update_all(ended_at: Time.current)
-      puts "Cleaned up!"
-    else
-      puts "No stuck incarnations found"
+    puts "Found #{souls_without_names.count} souls without personal info"
+    
+    progress = 0
+    total = souls_without_names.count
+    
+    souls_without_names.find_each do |soul|
+      begin
+        soul.generate_personal_info
+        progress += 1
+        
+        if progress % 100 == 0
+          puts "Processed #{progress}/#{total} souls..."
+        end
+      rescue => e
+        puts "Error processing soul #{soul.soul_id}: #{e.message}"
+      end
+    end
+    
+    puts "✅ Personal info generation complete!"
+    puts "#{total} souls now have names, appearances, and voices"
+  end
+  
+  desc "Show souls with missing personal info"
+  task check_personal_info: :environment do
+    without_names = Soul.where(first_name: nil).count
+    without_appearance = Soul.where(appearance_traits: nil).count
+    without_voice = Soul.where(voice_characteristics: nil).count
+    
+    puts "Souls missing personal info:"
+    puts "  Without names: #{without_names}"
+    puts "  Without appearance: #{without_appearance}" 
+    puts "  Without voice: #{without_voice}"
+    puts "  Total souls: #{Soul.count}"
+  end
+  
+  desc "Create test souls with various traits"
+  task create_test_souls: :environment do
+    5.times do |i|
+      soul = Soul.create!
+      puts "Created soul ##{i + 1}: #{soul.display_name} (#{soul.soul_id})"
     end
   end
 end

@@ -1,0 +1,140 @@
+<%= turbo_stream_from "incarnations" %>
+
+<div class="incarnations-header">
+  <h1>All Incarnations</h1>
+  <div class="filters">
+    <%= form_with url: incarnations_dashboard_path, method: :get, data: { turbo_frame: "incarnations_list" } do |f| %>
+      <%= f.select :status, 
+          options_for_select([
+            ["All", ""],
+            ["Active", "active"],
+            ["Ended", "ended"]
+          ], params[:status]),
+          {},
+          { onchange: "this.form.requestSubmit()" } %>
+      
+      <%= f.select :forge_type,
+          options_for_select([
+            ["All Forges", ""],
+            ["Combat", "combat"],
+            ["Collaboration", "collaboration"],
+            ["Creation", "creation"],
+            ["Diplomacy", "diplomacy"],
+            ["Exploration", "exploration"],
+            ["Caretaking", "caretaking"]
+          ], params[:forge_type]),
+          {},
+          { onchange: "this.form.requestSubmit()" } %>
+          
+      <%= f.select :sort,
+          options_for_select([
+            ["Most Recent", "created_at_desc"],
+            ["Oldest First", "created_at_asc"],
+            ["Most Experience", "experience_desc"],
+            ["Longest Duration", "duration_desc"]
+          ], params[:sort] || "created_at_desc"),
+          {},
+          { onchange: "this.form.requestSubmit()" } %>
+    <% end %>
+  </div>
+</div>
+
+<%= turbo_frame_tag "incarnations_list", data: { turbo_action: "advance" } do %>
+  <div class="stats-grid mini">
+    <div class="stat-card">
+      <div class="stat-value"><%= @stats[:total] %></div>
+      <div class="stat-label">Total Incarnations</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value"><%= @stats[:active] %></div>
+      <div class="stat-label">Currently Active</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value"><%= @stats[:average_duration] %></div>
+      <div class="stat-label">Avg Duration (min)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value"><%= @stats[:total_experience] %></div>
+      <div class="stat-label">Total Experience</div>
+    </div>
+  </div>
+
+  <% if @incarnations.any? %>
+    <table>
+      <thead>
+        <tr>
+          <th>Soul</th>
+          <th>Forge</th>
+          <th>Started</th>
+          <th>Duration</th>
+          <th>Status</th>
+          <th>Experience</th>
+          <th>Outcome</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @incarnations.each do |incarnation| %>
+          <tr id="incarnation_<%= incarnation.id %>" class="<%= 'pulse-animation' if incarnation.active? %>">
+            <td>
+              <%= link_to soul_dashboard_path(incarnation.soul.soul_id), class: "soul-name" do %>
+                <%= incarnation.soul.display_name %>
+                <div class="soul-id"><%= incarnation.soul.soul_id %></div>
+              <% end %>
+            </td>
+            <td>
+              <span class="badge <%= incarnation.forge_type %>">
+                <%= incarnation.forge_type.capitalize %>
+              </span>
+            </td>
+            <td>
+              <span title="<%= incarnation.created_at.strftime('%Y-%m-%d %H:%M:%S') %>">
+                <%= time_ago_in_words(incarnation.created_at) %> ago
+              </span>
+            </td>
+            <td>
+              <% if incarnation.ended_at? %>
+                <%= distance_of_time_in_words(incarnation.created_at, incarnation.ended_at) %>
+              <% else %>
+                <span class="text-dim">Ongoing</span>
+              <% end %>
+            </td>
+            <td>
+              <span class="badge <%= incarnation.ended_at? ? 'ended' : 'active' %>">
+                <%= incarnation.ended_at? ? 'Ended' : 'Active' %>
+              </span>
+            </td>
+            <td>
+              <%= number_with_delimiter(incarnation.total_experience || 0) %>
+            </td>
+            <td>
+              <% if incarnation.memory_summary.present? %>
+                <% summary = incarnation.parsed_memory_summary %>
+                <% if summary['outcome'] %>
+                  <span class="badge <%= summary['outcome'] %>">
+                    <%= summary['outcome'].capitalize %>
+                  </span>
+                  <% if summary['kills'] && summary['kills'] > 0 %>
+                    <span class="text-dim"><%= summary['kills'] %> kills</span>
+                  <% end %>
+                <% else %>
+                  <span class="text-dim">-</span>
+                <% end %>
+              <% else %>
+                <span class="text-dim">-</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <%= paginate @incarnations %>
+    </div>
+  <% else %>
+    <div class="empty-state">
+      <h3>No incarnations found</h3>
+      <p>Try adjusting your filters or wait for souls to incarnate.</p>
+    </div>
+  <% end %>
+<% end %>

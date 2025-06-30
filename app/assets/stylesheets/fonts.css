@@ -1,0 +1,37 @@
+/* Berkeley Mono Font Family */
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono/BerkeleyMono-Regular.otf') format('opentype'),
+       url('/fonts/BerkeleyMono/BerkeleyMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono/BerkeleyMono-Bold.otf') format('opentype'),
+       url('/fonts/BerkeleyMono/BerkeleyMono-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono/BerkeleyMono-Italic.otf') format('opentype'),
+       url('/fonts/BerkeleyMono/BerkeleyMono-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono/BerkeleyMono-BoldItalic.otf') format('opentype'),
+       url('/fonts/BerkeleyMono/BerkeleyMono-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}

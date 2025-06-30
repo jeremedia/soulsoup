@@ -37,7 +37,9 @@ class Soul < ApplicationRecord
   # Callbacks
   before_validation :generate_soul_id, on: :create
   before_validation :initialize_genome, on: :create
+  before_validation :set_born_at, on: :create
   before_validation :compute_personality_vector, if: :genome_changed?
+  after_create :generate_personal_info
   
   # Scopes
   scope :active, -> { joins(:incarnations).where(incarnations: { ended_at: nil }).distinct }
@@ -49,7 +51,7 @@ class Soul < ApplicationRecord
     incarnations.where(ended_at: nil).first
   end
   
-  def incarnate!(forge_type:, game_session_id:)
+  def incarnate!(forge_type:, game_session_id:, forge_session_id: nil)
     # Lock this soul record for update to prevent concurrent incarnations
     with_lock do
       # Double-check no active incarnation exists
@@ -59,12 +61,20 @@ class Soul < ApplicationRecord
       end
       
       # Create new incarnation
-      incarnations.create!(
+      incarnation_data = {
         forge_type: forge_type,
         game_session_id: game_session_id,
         started_at: Time.current,
         modifiers: compute_modifiers_for_forge(forge_type)
-      )
+      }
+      
+      # Add forge session if provided
+      if forge_session_id.present?
+        forge_session = ForgeSession.find_by(session_id: forge_session_id)
+        incarnation_data[:forge_session_id] = forge_session.id if forge_session
+      end
+      
+      incarnations.create!(incarnation_data)
     end
   end
   
@@ -91,10 +101,72 @@ class Soul < ApplicationRecord
       .map(&:related_soul)
   end
   
+  def full_name
+    [first_name, middle_name, last_name].compact.join(' ')
+  end
+  
+  def display_name
+    chosen_name || full_name
+  end
+  
+  def display_name_with_title
+    name = display_name
+    title.present? ? "#{name} #{title}" : name
+  end
+  
+  def generate_personal_info
+    return if first_name.present? # Skip if already has personal info
+    
+    info = SoulNameGenerator.generate_for_soul(self)
+    
+    update!(
+      first_name: info[:first_name],
+      middle_name: info[:middle_name],
+      last_name: info[:last_name],
+      portrait_seed: info[:portrait_seed],
+      appearance_traits: info[:appearance_traits],
+      voice_characteristics: info[:voice_characteristics]
+    )
+  end
+  
+  def time_in_universe
+    return nil unless born_at
+    Time.current - born_at
+  end
+  
+  def time_in_universe_humanized
+    return "Unknown" unless born_at
+    ActionController::Base.helpers.distance_of_time_in_words(born_at, Time.current)
+  end
+  
+  def compute_modifiers_for_forge(forge_type)
+    # Compute forge-specific modifiers based on personality
+    base_modifiers = {}
+    
+    case forge_type
+    when "combat"
+      base_modifiers[:courage_bonus] = (genome["courage"] - 0.5) * 0.3
+      base_modifiers[:aim_adjustment] = (genome["strategic_thinking"] - 0.5) * 0.15
+      base_modifiers[:retreat_timing] = (genome["risk_tolerance"] - 0.5) * -100
+    when "collaboration"
+      base_modifiers[:cooperation_bonus] = (genome["empathy"] - 0.5) * 0.25
+      base_modifiers[:communication_speed] = (genome["social_orientation"] - 0.5) * 0.2
+    when "creation"
+      base_modifiers[:innovation_rate] = (genome["creativity"] - 0.5) * 0.35
+      base_modifiers[:persistence] = (genome["patience"] - 0.5) * 0.3
+    end
+    
+    base_modifiers
+  end
+  
   private
   
   def generate_soul_id
     self.soul_id ||= "soul-#{Nanoid.generate}"
+  end
+  
+  def set_born_at
+    self.born_at ||= Time.current
   end
   
   def initialize_genome
@@ -132,25 +204,5 @@ class Soul < ApplicationRecord
     self.personality_vector = vector
     
     Rails.logger.info "Personality vector computation took: #{(Time.current - start_time) * 1000}ms"
-  end
-  
-  def compute_modifiers_for_forge(forge_type)
-    # Compute forge-specific modifiers based on personality
-    base_modifiers = {}
-    
-    case forge_type
-    when "combat"
-      base_modifiers[:courage_bonus] = (genome["courage"] - 0.5) * 0.3
-      base_modifiers[:aim_adjustment] = (genome["strategic_thinking"] - 0.5) * 0.15
-      base_modifiers[:retreat_timing] = (genome["risk_tolerance"] - 0.5) * -100
-    when "collaboration"
-      base_modifiers[:cooperation_bonus] = (genome["empathy"] - 0.5) * 0.25
-      base_modifiers[:communication_speed] = (genome["social_orientation"] - 0.5) * 0.2
-    when "creation"
-      base_modifiers[:innovation_rate] = (genome["creativity"] - 0.5) * 0.35
-      base_modifiers[:persistence] = (genome["patience"] - 0.5) * 0.25
-    end
-    
-    base_modifiers
   end
 end

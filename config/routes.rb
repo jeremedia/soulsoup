@@ -1,7 +1,26 @@
 Rails.application.routes.draw do
+  # Dashboard routes
+  root "dashboard#index"
+  get "dashboard", to: "dashboard#index"
+  get "dashboard/souls", to: "dashboard#souls"
+  get "dashboard/incarnations", to: "dashboard#incarnations", as: :incarnations_dashboard
+  get "dashboard/soul/:id", to: "dashboard#soul", as: :soul_dashboard
+  
+  # Forge session routes
+  resources :forge_sessions do
+    member do
+      patch :start
+      patch :end
+    end
+  end
+
   namespace :api do
     namespace :v1 do
-      resources :incarnations, only: [:create]
+      resources :incarnations, only: [:create] do
+        member do
+          post :end
+        end
+      end
       
       resources :events, only: [] do
         collection do
@@ -10,6 +29,12 @@ Rails.application.routes.draw do
       end
       
       resources :souls, only: [:index, :show]
+      
+      resources :sessions, only: [] do
+        member do
+          post :heartbeat
+        end
+      end
     end
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

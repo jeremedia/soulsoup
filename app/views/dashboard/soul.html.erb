@@ -1,0 +1,155 @@
+<div class="soul-header">
+  <div class="soul-info">
+    <h2><%= @soul.display_name_with_title %></h2>
+    <div class="soul-subtitle">
+      <%= @soul.soul_id %> • Generation <%= @soul.generation %>
+      <% if @soul.born_at %>
+        <br>
+        <span style="color: var(--text-dim); font-size: 12px;">
+          Born <%= time_ago_in_words(@soul.born_at) %> ago • Time in Universe: <%= @soul.time_in_universe_humanized %>
+        </span>
+      <% end %>
+    </div>
+  </div>
+  
+  <div class="soul-stats">
+    <div class="stat-value"><%= @soul.total_incarnations %></div>
+    <div class="stat-label">Incarnations</div>
+    <div class="stat-value" style="margin-top: 10px;"><%= number_with_precision(@soul.current_grace_level * 100, precision: 1) %>%</div>
+    <div class="stat-label">Grace Level</div>
+  </div>
+</div>
+
+<div class="trait-grid">
+  <div class="trait-card">
+    <h4>Appearance</h4>
+    <% if @soul.appearance_traits.present? %>
+      <% @soul.appearance_traits.each do |trait, value| %>
+        <div style="margin-bottom: 5px;">
+          <span style="color: var(--text-dim);"><%= trait.humanize %>:</span>
+          <span class="trait-value"><%= value %></span>
+        </div>
+      <% end %>
+    <% else %>
+      <span style="color: var(--text-dim);">Not yet revealed</span>
+    <% end %>
+  </div>
+  
+  <div class="trait-card">
+    <h4>Voice</h4>
+    <% if @soul.voice_characteristics.present? %>
+      <% @soul.voice_characteristics.each do |trait, value| %>
+        <div style="margin-bottom: 5px;">
+          <span style="color: var(--text-dim);"><%= trait.humanize %>:</span>
+          <span class="trait-value"><%= value %></span>
+        </div>
+      <% end %>
+    <% else %>
+      <span style="color: var(--text-dim);">Not yet revealed</span>
+    <% end %>
+  </div>
+  
+  <div class="trait-card">
+    <h4>Core Traits</h4>
+    <% if @soul.base_traits.present? %>
+      <% @soul.base_traits.each do |trait, value| %>
+        <div style="margin-bottom: 5px;">
+          <span style="color: var(--text-dim);"><%= trait.humanize %>:</span>
+          <span class="trait-value"><%= value %></span>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+  
+  <div class="trait-card">
+    <h4>Personality</h4>
+    <div style="margin-bottom: 5px;">
+      <span style="color: var(--text-dim);">Courage:</span>
+      <span class="trait-value"><%= number_with_precision(@soul.genome["courage"] * 100, precision: 0) %>%</span>
+    </div>
+    <div style="margin-bottom: 5px;">
+      <span style="color: var(--text-dim);">Empathy:</span>
+      <span class="trait-value"><%= number_with_precision(@soul.genome["empathy"] * 100, precision: 0) %>%</span>
+    </div>
+    <div style="margin-bottom: 5px;">
+      <span style="color: var(--text-dim);">Curiosity:</span>
+      <span class="trait-value"><%= number_with_precision(@soul.genome["curiosity"] * 100, precision: 0) %>%</span>
+    </div>
+    <div style="margin-bottom: 5px;">
+      <span style="color: var(--text-dim);">Creativity:</span>
+      <span class="trait-value"><%= number_with_precision(@soul.genome["creativity"] * 100, precision: 0) %>%</span>
+    </div>
+  </div>
+</div>
+
+<h2 class="section-title">Recent Incarnations</h2>
+
+<% if @incarnations.any? %>
+  <table>
+    <thead>
+      <tr>
+        <th>Incarnation ID</th>
+        <th>Forge</th>
+        <th>Duration</th>
+        <th>Outcome</th>
+        <th>Experience</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @incarnations.each do |incarnation| %>
+        <tr>
+          <td><span style="font-size: 12px; color: var(--text-dim);"><%= incarnation.incarnation_id %></span></td>
+          <td><%= incarnation.forge_type&.capitalize || "Unknown" %></td>
+          <td>
+            <% if incarnation.duration %>
+              <%= distance_of_time_in_words(incarnation.duration) %>
+            <% else %>
+              <span class="badge active">Active</span>
+            <% end %>
+          </td>
+          <td>
+            <% if incarnation.ended_at %>
+              <% summary = incarnation.memory_summary.is_a?(String) ? (JSON.parse(incarnation.memory_summary) rescue {}) : {} %>
+              <span class="badge <%= summary['outcome'] %>"><%= summary['outcome'] || 'ended' %></span>
+            <% else %>
+              <span style="color: var(--text-dim);">-</span>
+            <% end %>
+          </td>
+          <td><%= number_with_precision(incarnation.total_experience || 0, precision: 2) %></td>
+          <td><%= time_ago_in_words(incarnation.created_at) %> ago</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <div class="empty-state">
+    <p>This soul has not yet been incarnated</p>
+  </div>
+<% end %>
+
+<% if @relationships.any? %>
+  <h2 class="section-title">Relationships</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Soul</th>
+        <th>Type</th>
+        <th>Strength</th>
+        <th>Formed</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @relationships.each do |relationship| %>
+        <tr>
+          <td>
+            <%= link_to relationship.related_soul.display_name, soul_dashboard_path(relationship.related_soul), class: "soul-name" %>
+          </td>
+          <td><%= relationship.relationship_type&.capitalize %></td>
+          <td><%= number_with_precision(relationship.strength * 100, precision: 0) %>%</td>
+          <td><%= time_ago_in_words(relationship.formed_at) %> ago</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

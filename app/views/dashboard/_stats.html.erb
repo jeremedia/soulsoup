@@ -1,0 +1,26 @@
+<div id="dashboard_stats" class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value"><%= stats[:total_souls] %></div>
+    <div class="stat-label">Total Souls</div>
+  </div>
+  
+  <div class="stat-card">
+    <div class="stat-value"><%= stats[:active_incarnations] %></div>
+    <div class="stat-label">Active Incarnations</div>
+  </div>
+  
+  <div class="stat-card">
+    <div class="stat-value"><%= stats[:total_incarnations] %></div>
+    <div class="stat-label">Total Incarnations</div>
+  </div>
+  
+  <div class="stat-card">
+    <div class="stat-value"><%= number_with_precision(stats[:average_grace] * 100, precision: 1) %>%</div>
+    <div class="stat-label">Average Grace Level</div>
+  </div>
+  
+  <div class="stat-card">
+    <div class="stat-value"><%= number_with_precision(stats[:total_experience], precision: 0) %></div>
+    <div class="stat-label">Total Experience</div>
+  </div>
+</div>

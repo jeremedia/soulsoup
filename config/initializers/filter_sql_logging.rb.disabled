@@ -1,0 +1,24 @@
+# Filter sensitive genome data from ActiveRecord SQL logs
+Rails.application.config.after_initialize do
+  # Only apply in development to avoid performance impact in production
+  if Rails.env.development?
+    # Patch the connection adapter's log method to filter genome data
+    ActiveSupport.on_load(:active_record) do
+      ActiveRecord::ConnectionAdapters::AbstractAdapter.prepend(Module.new do
+        # In Rails 8.0.2, the log method signature has changed
+        def log(*args)
+          sql = args[0]
+          # Filter genome data from SQL logs if sql is a string
+          if sql.is_a?(String) && sql.include?("genome")
+            # Replace the entire genome JSON with [FILTERED]
+            filtered_sql = sql.gsub(/'{"gene_\d+":[^']+}'/, "'[FILTERED]'")
+            args[0] = filtered_sql
+            super(*args)
+          else
+            super
+          end
+        end
+      end)
+    end
+  end
+end

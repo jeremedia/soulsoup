@@ -1,5 +1,6 @@
 class Incarnation < ApplicationRecord
   belongs_to :soul, counter_cache: :total_incarnations
+  belongs_to :forge_session, optional: true
   
   # JSONB accessors for modifiers
   jsonb_accessor :modifiers,
@@ -24,6 +25,8 @@ class Incarnation < ApplicationRecord
   # Callbacks
   before_validation :generate_incarnation_id, on: :create
   before_validation :set_defaults, on: :create
+  after_create_commit :broadcast_incarnation_created
+  after_update_commit :broadcast_incarnation_updated
   
   # Scopes
   scope :active, -> { where(ended_at: nil) }
@@ -46,7 +49,8 @@ class Incarnation < ApplicationRecord
     return if ended_at.present?
     
     self.ended_at = Time.current
-    self.memory_summary = summary if summary.present?
+    # Convert hash to JSON string if needed since memory_summary is text column
+    self.memory_summary = summary.is_a?(Hash) ? summary.to_json : summary if summary.present?
     save!
     
     # Trigger post-incarnation processing
@@ -78,6 +82,21 @@ class Incarnation < ApplicationRecord
     experience_gained = calculate_experience_for_event(event_type, context)
     increment!(:events_count)
     increment!(:total_experience, experience_gained)
+  end
+  
+  def parsed_memory_summary
+    return {} if memory_summary.blank?
+    
+    begin
+      # Handle both JSON string and Hash
+      if memory_summary.is_a?(String)
+        JSON.parse(memory_summary)
+      else
+        memory_summary
+      end
+    rescue JSON::ParserError
+      {}
+    end
   end
   
   private
@@ -118,5 +137,67 @@ class Incarnation < ApplicationRecord
     end
     
     base
+  end
+  
+  def team_name
+    team || 'unassigned'
+  end
+  
+  def team_color
+    return '#666' unless forge_session&.forge.respond_to?(:team_colors)
+    forge_session.forge.team_colors[team] || '#666'
+  end
+  
+  def teammates
+    return Incarnation.none unless forge_session && team
+    forge_session.team_incarnations(team).where.not(id: id)
+  end
+  
+  def enemies
+    return Incarnation.none unless forge_session && team
+    forge_session.incarnations.where.not(team: team)
+  end
+  
+  def broadcast_incarnation_created
+    broadcast_prepend_later_to "incarnations",
+      target: "recent_incarnations",
+      partial: "dashboard/incarnation_row",
+      locals: { incarnation: self }
+      
+    broadcast_dashboard_stats
+    # broadcast_team_update if forge_session # TODO: Enable after views created
+  end
+  
+  def broadcast_incarnation_updated
+    broadcast_prepend_later_to "incarnations",
+      target: "incarnation_#{id}",
+      partial: "dashboard/incarnation_row",
+      locals: { incarnation: self }
+      
+    broadcast_dashboard_stats if saved_change_to_ended_at?
+    # broadcast_team_update if forge_session && saved_change_to_ended_at? # TODO: Enable after views created
+  end
+  
+  def broadcast_team_update
+    # Update the team display in the forge session
+    broadcast_replace_to "forge_session_#{forge_session.id}",
+      target: "team_#{team}",
+      partial: "forge_sessions/team",
+      locals: { session: forge_session, team: team }
+  end
+  
+  def broadcast_dashboard_stats
+    stats = {
+      total_souls: Soul.count,
+      active_incarnations: Incarnation.active.count,
+      total_incarnations: Incarnation.count,
+      total_experience: Incarnation.sum(:total_experience),
+      average_grace: Soul.average(:current_grace_level) || 0
+    }
+    
+    broadcast_replace_later_to "souls_dashboard",
+      target: "dashboard_stats",
+      partial: "dashboard/stats",
+      locals: { stats: stats }
   end
 end

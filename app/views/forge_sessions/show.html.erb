@@ -1,0 +1,142 @@
+<%= turbo_stream_from "forge_session_#{@forge_session.id}" %>
+
+<div class="session-header">
+  <div class="session-title">
+    <h1><%= @forge_session.forge.name %> Session</h1>
+    <div class="session-meta">
+      <span class="session-id">ID: <%= @forge_session.session_id %></span>
+      <span id="session_status" class="session-status <%= @forge_session.status %>">
+        Status: <span class="badge <%= @forge_session.status %>"><%= @forge_session.status.titleize %></span>
+      </span>
+    </div>
+  </div>
+  
+  <div class="session-actions">
+    <% if @forge_session.can_start? %>
+      <%= button_to "Start Session", start_forge_session_path(@forge_session), method: :patch, class: "btn btn-primary" %>
+    <% elsif @forge_session.active? %>
+      <%= button_to "End Session", end_forge_session_path(@forge_session), method: :patch, class: "btn btn-danger", 
+                    params: { winner: 'manual', reason: 'Manual termination' }, 
+                    confirm: "Are you sure you want to end this session?" %>
+    <% end %>
+    <%= link_to "Back to Sessions", forge_sessions_path, class: "btn btn-secondary" %>
+  </div>
+</div>
+
+<div class="session-stats">
+  <div class="stat-item">
+    <span class="stat-label">Duration:</span>
+    <span class="stat-value">
+      <% if @forge_session.started_at %>
+        <%= time_ago_in_words(@forge_session.started_at) %>
+      <% else %>
+        Not started
+      <% end %>
+    </span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-label">Participants:</span>
+    <span class="stat-value">
+      <%= @forge_session.incarnations.active.count %>/<%= @forge_session.forge.max_participants %>
+    </span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-label">Forge Type:</span>
+    <span class="stat-value"><%= @forge_session.forge.type %></span>
+  </div>
+</div>
+
+<div id="session_teams" class="teams-grid">
+  <% @teams.each do |team| %>
+    <%= render "team_panel", session: @forge_session, team: team, team_data: @team_data[team] %>
+  <% end %>
+</div>
+
+<style>
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #333;
+}
+
+.session-title h1 {
+  color: #0f0;
+  margin: 0 0 0.5rem 0;
+}
+
+.session-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.session-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 3px;
+  text-decoration: none;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+
+.btn-primary { background: #0f0; color: #000; }
+.btn-primary:hover { background: #0c0; }
+.btn-danger { background: #f00; color: #fff; }
+.btn-danger:hover { background: #c00; }
+.btn-secondary { background: #666; color: #fff; }
+.btn-secondary:hover { background: #555; }
+
+.session-stats {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: #111;
+  border-radius: 5px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #999;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  color: #0f0;
+  font-weight: bold;
+}
+
+.badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.badge.waiting { background: #fa0; color: #000; }
+.badge.active { background: #0f0; color: #000; }
+.badge.completed { background: #666; color: #fff; }
+
+.teams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+</style>

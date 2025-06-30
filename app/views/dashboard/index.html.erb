@@ -1,0 +1,37 @@
+<%= turbo_stream_from "souls_dashboard" %>
+
+<%= render partial: "stats", locals: { stats: {
+  total_souls: @total_souls,
+  active_incarnations: @active_incarnations,
+  total_incarnations: @total_incarnations,
+  average_grace: @average_grace,
+  total_experience: @total_experience
+}} %>
+
+<h2 class="section-title">Recent Incarnations</h2>
+
+<%= turbo_stream_from "incarnations" %>
+
+<% if @recent_incarnations.any? %>
+  <table>
+    <thead>
+      <tr>
+        <th>Soul</th>
+        <th>Forge</th>
+        <th>Started</th>
+        <th>Status</th>
+        <th>Experience</th>
+      </tr>
+    </thead>
+    <tbody id="recent_incarnations">
+      <% @recent_incarnations.each do |incarnation| %>
+        <%= render partial: "incarnation_row", locals: { incarnation: incarnation } %>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <div class="empty-state">
+    <h3>No incarnations yet</h3>
+    <p>Souls are waiting to be born into the forges...</p>
+  </div>
+<% end %>

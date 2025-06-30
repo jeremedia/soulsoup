@@ -21,7 +21,8 @@ class Api::V1::IncarnationsController < ApplicationController
         incarnation_start = Time.current
         incarnation = soul.incarnate!(
           forge_type: params[:forge_type] || 'combat',
-          game_session_id: params[:game_session_id]
+          game_session_id: params[:game_session_id],
+          forge_session_id: params[:forge_session_id]
         )
         Rails.logger.info "Incarnation creation took: #{(Time.current - incarnation_start) * 1000}ms"
         Rails.logger.info "Created incarnation: #{incarnation.incarnation_id}"
@@ -57,6 +58,32 @@ class Api::V1::IncarnationsController < ApplicationController
   rescue => e
     Rails.logger.error "Incarnation request failed: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")
+    render json: { error: e.message }, status: :internal_server_error
+  end
+  
+  def end
+    incarnation = Incarnation.find_by!(incarnation_id: params[:id])
+    
+    # Check if already ended
+    if incarnation.ended_at.present?
+      render json: { message: "Incarnation already ended" }, status: :ok
+      return
+    end
+    
+    # End the incarnation with provided summary
+    incarnation.end_incarnation!(summary: params[:memory_summary])
+    
+    render json: {
+      soul_id: incarnation.soul.soul_id,
+      incarnation_id: incarnation.incarnation_id,
+      duration: incarnation.duration,
+      total_experience: incarnation.total_experience,
+      message: "Incarnation ended successfully"
+    }
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Incarnation not found" }, status: :not_found
+  rescue => e
+    Rails.logger.error "Failed to end incarnation: #{e.message}"
     render json: { error: e.message }, status: :internal_server_error
   end
   

@@ -1,0 +1,22 @@
+{
+  "name": "RailsManager",
+  "description": "Manages Rails server and solid_queue job processor for the Soulsoup application. This tool allows starting, stopping, restarting services and testing the incarnation lifecycle without needing bash approval.",
+  "parameters": {
+    "command": {
+      "type": "string",
+      "enum": ["start", "stop", "restart", "status", "test"],
+      "description": "The command to execute",
+      "required": true
+    },
+    "port": {
+      "type": "integer",
+      "description": "Port number for Rails server (default: 4001)",
+      "required": false,
+      "default": 4001
+    }
+  },
+  "implementation": {
+    "type": "node_script",
+    "path": "/Volumes/jer4TBv3/Soulforge_Universe/soulsoup/scripts/rails_manager.js"
+  }
+}
