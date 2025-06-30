@@ -1,5 +1,6 @@
 class Soul < ApplicationRecord
   include Neighbor::Model
+  include SoulPool
   
   # Associations
   has_many :incarnations, dependent: :destroy
