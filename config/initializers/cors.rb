@@ -8,7 +8,7 @@
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
     # Allow requests from the Vite dev server and production
-    origins "http://localhost:5173", "http://localhost:3000", "https://jeremedia.com"
+    origins "http://localhost:5173", "http://localhost:3000", "http://localhost:3001", "https://jeremedia.com"
 
     resource "*",
       headers: :any,

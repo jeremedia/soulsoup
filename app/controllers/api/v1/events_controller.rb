@@ -25,8 +25,15 @@ class Api::V1::EventsController < ApplicationController
   private
   
   def process_event(event_data)
+    # Skip offline incarnations (they're not in the database)
+    incarnation_id = event_data[:incarnation_id]
+    if incarnation_id.to_s.include?('offline')
+      Rails.logger.debug "Skipping offline incarnation event: #{incarnation_id}"
+      return
+    end
+    
     # Find the incarnation
-    incarnation = Incarnation.find_by!(incarnation_id: event_data[:incarnation_id])
+    incarnation = Incarnation.find_by!(incarnation_id: incarnation_id)
     
     # Store the raw event in Rails Event Store
     event = build_event_from_type(event_data[:type], event_data)

@@ -2,7 +2,7 @@ class CombatForge < Forge
   def default_settings
     {
       min_participants: 2,
-      max_teams: 4,
+      max_teams: 5,
       session_duration: 300, # 5 minutes
       concurrent_sessions: 3,
       victory_conditions: {
@@ -10,14 +10,14 @@ class CombatForge < Forge
         'objectives' => 'First to complete objectives',
         'time_limit' => 'Most kills when time expires'
       },
-      teams: ['red', 'blue', 'green', 'yellow'],
+      teams: ['red', 'blue', 'green', 'yellow', 'pink'],
       weapons: ['rifle', 'pistol', 'grenade'],
       map_size: 'medium'
     }
   end
   
   def default_teams
-    ['red', 'blue']
+    ['red', 'blue', 'green', 'yellow', 'pink']
   end
   
   def team_colors
@@ -25,7 +25,8 @@ class CombatForge < Forge
       'red' => '#ff4444',
       'blue' => '#4444ff', 
       'green' => '#44ff44',
-      'yellow' => '#ffff44'
+      'yellow' => '#ffff44',
+      'pink' => '#ff55ff'
     }
   end
   

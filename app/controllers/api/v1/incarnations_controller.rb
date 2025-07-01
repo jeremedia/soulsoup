@@ -22,7 +22,8 @@ class Api::V1::IncarnationsController < ApplicationController
         incarnation = soul.incarnate!(
           forge_type: params[:forge_type] || 'combat',
           game_session_id: params[:game_session_id],
-          forge_session_id: params[:forge_session_id]
+          forge_session_id: params[:forge_session_id],
+          team_preferences: params[:team_preferences]
         )
         Rails.logger.info "Incarnation creation took: #{(Time.current - incarnation_start) * 1000}ms"
         Rails.logger.info "Created incarnation: #{incarnation.incarnation_id}"
@@ -42,7 +43,17 @@ class Api::V1::IncarnationsController < ApplicationController
     rescue ActiveRecord::RecordInvalid => e
       if e.message.include?("Soul already has active incarnation") && retries < 3
         retries += 1
-        Rails.logger.info "Retrying incarnation request (attempt #{retries})"
+        Rails.logger.info "Retrying incarnation request (attempt #{retries}) - soul was taken by another request"
+        retry
+      else
+        raise
+      end
+    rescue ActiveRecord::StatementInvalid => e
+      # Handle deadlock scenarios gracefully
+      if e.message.include?("deadlock detected") && retries < 3
+        retries += 1
+        Rails.logger.warn "Deadlock detected, retrying (attempt #{retries})"
+        sleep(0.05 * retries) # Small backoff
         retry
       else
         raise
@@ -90,44 +101,38 @@ class Api::V1::IncarnationsController < ApplicationController
   private
   
   def find_or_create_soul_for_session
-    # Try to find an available soul (not currently incarnated)
-    Rails.logger.info "Looking for available soul..."
-    Rails.logger.info "Total souls in database: #{Soul.count}"
-    Rails.logger.info "Active incarnations: #{Incarnation.active.count}"
+    # Use a transaction with pessimistic locking to handle race conditions
+    Soul.transaction do
+      Rails.logger.info "Looking for available soul..."
+      Rails.logger.info "Total souls in database: #{Soul.count}"
+      Rails.logger.info "Active incarnations: #{Incarnation.active.count}"
     
-    query_start = Time.current
-    
-    # Find souls that don't have active incarnations
-    # First try souls that have never been incarnated
-    available_soul = Soul.where.not(id: Incarnation.active.select(:soul_id))
-                         .left_joins(:incarnations)
-                         .where(incarnations: { id: nil })
-                         .order('souls.total_incarnations ASC')
-                         .first
-    
-    # If no virgin souls, find one with only ended incarnations
-    if available_soul.nil?
+      query_start = Time.current
+      
+      # Find souls that don't have active incarnations with pessimistic locking
+      # Using NOT IN subquery to avoid outer join with FOR UPDATE
       available_soul = Soul.where.not(id: Incarnation.active.select(:soul_id))
                            .order('souls.total_incarnations ASC')
+                           .lock("FOR UPDATE SKIP LOCKED") # Skip locked rows to avoid waiting
                            .first
-    end
-    
-    Rails.logger.info "Soul query took: #{(Time.current - query_start) * 1000}ms"
-    
-    if available_soul.nil?
-      # No available souls, create a new one
-      Rails.logger.info "Creating new soul - no available souls in pool"
-      create_start = Time.current
-      new_soul = Soul.create!(
-        total_incarnations: 0,
-        current_grace_level: 0.0
-      )
-      Rails.logger.info "Soul creation took: #{(Time.current - create_start) * 1000}ms"
-      Rails.logger.info "Created soul: #{new_soul.soul_id}"
-      new_soul
-    else
-      Rails.logger.info "Reusing soul #{available_soul.soul_id} for new incarnation"
-      available_soul
+      
+      Rails.logger.info "Soul query took: #{(Time.current - query_start) * 1000}ms"
+      
+      if available_soul
+        Rails.logger.info "Found available soul: #{available_soul.soul_id} (incarnations: #{available_soul.total_incarnations})"
+        available_soul
+      else
+        # No available souls, create a new one
+        Rails.logger.info "Creating new soul - no available souls in pool"
+        create_start = Time.current
+        new_soul = Soul.create!(
+          total_incarnations: 0,
+          current_grace_level: 0.0
+        )
+        Rails.logger.info "Soul creation took: #{(Time.current - create_start) * 1000}ms"
+        Rails.logger.info "Created soul: #{new_soul.soul_id}"
+        new_soul
+      end
     end
   end
 end

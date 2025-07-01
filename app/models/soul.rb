@@ -51,7 +51,7 @@ class Soul < ApplicationRecord
     incarnations.where(ended_at: nil).first
   end
   
-  def incarnate!(forge_type:, game_session_id:, forge_session_id: nil)
+  def incarnate!(forge_type:, game_session_id:, forge_session_id: nil, team_preferences: nil)
     # Lock this soul record for update to prevent concurrent incarnations
     with_lock do
       # Double-check no active incarnation exists
@@ -69,12 +69,27 @@ class Soul < ApplicationRecord
       }
       
       # Add forge session if provided
+      forge_session = nil
       if forge_session_id.present?
         forge_session = ForgeSession.find_by(session_id: forge_session_id)
         incarnation_data[:forge_session_id] = forge_session.id if forge_session
       end
       
-      incarnations.create!(incarnation_data)
+      # Assign team based on preferences and forge session
+      if forge_session
+        assigned_team = assign_team_for_forge_session(forge_session, team_preferences)
+        incarnation_data[:team] = assigned_team if assigned_team
+      end
+      
+      incarnation = incarnations.create!(incarnation_data)
+      
+      # Auto-start forge session if it's waiting and this is the first incarnation
+      if forge_session && forge_session.should_auto_start?
+        Rails.logger.info "Auto-starting forge session #{forge_session.session_id} with first incarnation"
+        forge_session.start_session!
+      end
+      
+      incarnation
     end
   end
   
@@ -160,6 +175,51 @@ class Soul < ApplicationRecord
   end
   
   private
+  
+  def assign_team_for_forge_session(forge_session, team_preferences)
+    # Get available teams for this forge
+    available_teams = forge_session.teams_list
+    
+    # If team preferences provided, try to honor them
+    if team_preferences.present?
+      # Convert to lowercase for matching (frontend sends "Red", we store "red")
+      preferred_teams = team_preferences.map(&:downcase) & available_teams
+      
+      # Try each preferred team and find one that's not full
+      preferred_teams.each do |team|
+        if can_join_team?(forge_session, team)
+          Rails.logger.info "Assigned soul #{soul_id} to preferred team: #{team}"
+          return team
+        end
+      end
+    end
+    
+    # No preferences or preferred teams full, find any available team
+    available_teams.each do |team|
+      if can_join_team?(forge_session, team)
+        Rails.logger.info "Assigned soul #{soul_id} to available team: #{team}"
+        return team
+      end
+    end
+    
+    # All teams full or no teams available - assign to least populated team
+    least_populated_team = available_teams.min_by do |team|
+      forge_session.team_incarnations(team).active.count
+    end
+    
+    Rails.logger.info "All teams full, assigned soul #{soul_id} to least populated team: #{least_populated_team}"
+    least_populated_team
+  end
+  
+  def can_join_team?(forge_session, team)
+    return false unless forge_session.can_join?(team)
+    
+    # Additional logic: Check if team has space
+    current_count = forge_session.team_incarnations(team).active.count
+    max_per_team = forge_session.max_per_team
+    
+    current_count < max_per_team
+  end
   
   def generate_soul_id
     self.soul_id ||= "soul-#{Nanoid.generate}"

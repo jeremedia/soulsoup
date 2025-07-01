@@ -35,6 +35,13 @@ Rails.application.routes.draw do
           post :heartbeat
         end
       end
+      
+      resources :forge_sessions, only: [:create, :show, :update] do
+        member do
+          patch :start
+          patch :end
+        end
+      end
     end
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

@@ -10,9 +10,8 @@ class ForgeSession < ApplicationRecord
   # Callbacks
   before_validation :generate_session_id, on: :create
   before_validation :initialize_teams, on: :create
-  # TODO: Add broadcast callbacks after views are created
-  # after_create_commit :broadcast_session_created
-  # after_update_commit :broadcast_session_updated
+  after_create_commit :broadcast_session_created
+  after_update_commit :broadcast_session_updated
   
   # Scopes
   scope :active, -> { where(status: ['waiting', 'active']) }
@@ -24,7 +23,15 @@ class ForgeSession < ApplicationRecord
   end
   
   def can_start?
-    status == 'waiting' && incarnations.count >= forge.settings.dig('min_participants', 2)
+    status == 'waiting' && incarnations.count >= min_participants
+  end
+  
+  def should_auto_start?
+    status == 'waiting' && incarnations.active.count > 0
+  end
+  
+  def min_participants
+    session_data&.dig('settings', 'min_participants') || forge.settings.dig('min_participants') || 2
   end
   
   def can_join?(team = nil)
@@ -68,6 +75,10 @@ class ForgeSession < ApplicationRecord
     end
     
     broadcast_session_ended
+    
+    # Queue job to process session rewards
+    ProcessForgeSessionJob.perform_later(self)
+    
     true
   end
   
@@ -113,6 +124,13 @@ class ForgeSession < ApplicationRecord
     session_data.dig('outcome', 'winner')
   end
   
+  def team_data_for(team)
+    {
+      active: active_team_incarnations(team).includes(:soul).to_a,
+      deceased: deceased_team_incarnations(team).includes(:soul).to_a
+    }
+  end
+  
   private
   
   def generate_session_id
@@ -127,20 +145,29 @@ class ForgeSession < ApplicationRecord
   end
   
   def broadcast_session_created
-    broadcast_prepend_to "forge_sessions",
+    broadcast_prepend_later_to "forge_sessions",
       target: "active_sessions",
       partial: "forge_sessions/session_row",
       locals: { session: self }
   end
   
   def broadcast_session_updated
-    broadcast_replace_to "forge_sessions",
+    # Use broadcast_replace_later_to to avoid rendering during API requests
+    broadcast_replace_later_to "forge_sessions",
       target: "session_#{id}",
       partial: "forge_sessions/session_row", 
       locals: { session: self }
       
     if saved_change_to_status?
       broadcast_session_status_change
+    elsif saved_change_to_session_data?
+      # Update team panels when team stats change (async to avoid API issues)
+      teams_list.each do |team|
+        broadcast_replace_later_to "forge_session_#{id}",
+          target: "team_#{team}",
+          partial: "forge_sessions/team_panel",
+          locals: { session: self, team: team, team_data: team_data_for(team) }
+      end
     end
   end
   
@@ -157,10 +184,12 @@ class ForgeSession < ApplicationRecord
   end
   
   def broadcast_session_status_change
-    # Broadcast to the session detail page
-    broadcast_replace_to "forge_session_#{id}",
-      target: "session_teams",
-      partial: "forge_sessions/teams",
-      locals: { session: self }
+    # Broadcast to the session detail page (async to avoid API issues)
+    teams_list.each do |team|
+      broadcast_replace_later_to "forge_session_#{id}",
+        target: "team_#{team}",
+        partial: "forge_sessions/team_panel",
+        locals: { session: self, team: team, team_data: team_data_for(team) }
+    end
   end
 end

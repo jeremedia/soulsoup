@@ -40,6 +40,38 @@ class CleanupStaleIncarnationsJob < ApplicationJob
     end
     
     Rails.logger.info "[CleanupStaleIncarnationsJob] Completed cleanup. Ended #{stale_count} stale incarnations"
+    
+    # Also cleanup stale forge sessions
+    cleanup_stale_forge_sessions
+  end
+  
+  def cleanup_stale_forge_sessions
+    Rails.logger.info "[CleanupStaleIncarnationsJob] Checking for stale forge sessions"
+    
+    sessions_ended = 0
+    
+    # Find active forge sessions with no active incarnations
+    ForgeSession.active.find_each do |session|
+      if session.incarnations.active.count == 0
+        # Check if session has been empty for too long
+        last_activity = session.session_data["last_stats_update"] || session.started_at || session.created_at
+        last_activity_time = last_activity.is_a?(String) ? Time.parse(last_activity) : last_activity
+        
+        if last_activity_time < 10.minutes.ago
+          Rails.logger.info "[CleanupStaleIncarnationsJob] Ending stale forge session #{session.session_id}"
+          
+          session.end_session!({
+            winner: nil,
+            condition: "abandoned",
+            reason: "No active players for extended period"
+          })
+          
+          sessions_ended += 1
+        end
+      end
+    end
+    
+    Rails.logger.info "[CleanupStaleIncarnationsJob] Ended #{sessions_ended} stale forge sessions"
   end
   
   private

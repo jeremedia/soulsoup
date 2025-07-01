@@ -23,6 +23,38 @@
   </div>
 </div>
 
+<% if @forge_session.status == 'completed' && @forge_session.session_data['outcome'] %>
+<div class="session-outcome">
+  <h2>Session Outcome</h2>
+  <div class="outcome-details">
+    <% outcome = @forge_session.session_data['outcome'] %>
+    <div class="outcome-item">
+      <span class="outcome-label">Result:</span>
+      <span class="outcome-value <%= outcome['winner'] ? 'winner' : 'no-winner' %>">
+        <% if outcome['winner'] %>
+          <% team_names = ['RED', 'BLUE', 'GREEN', 'YELLOW', 'PINK'] %>
+          <%= team_names[outcome['winner']] || "TEAM #{outcome['winner']}" %> TEAM WINS!
+        <% else %>
+          <%= outcome['condition']&.humanize || 'No winner' %>
+        <% end %>
+      </span>
+    </div>
+    <% if outcome['reason'] %>
+    <div class="outcome-item">
+      <span class="outcome-label">Reason:</span>
+      <span class="outcome-value"><%= outcome['reason'] %></span>
+    </div>
+    <% end %>
+    <% if @forge_session.duration %>
+    <div class="outcome-item">
+      <span class="outcome-label">Total Duration:</span>
+      <span class="outcome-value"><%= (@forge_session.duration / 60).round(1) %> minutes</span>
+    </div>
+    <% end %>
+  </div>
+</div>
+<% end %>
+
 <div class="session-stats">
   <div class="stat-item">
     <span class="stat-label">Duration:</span>
@@ -147,5 +179,54 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1rem;
+}
+
+.session-outcome {
+  background: #1a1a1a;
+  border: 2px solid #444;
+  border-radius: 5px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.session-outcome h2 {
+  color: #0f0;
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+}
+
+.outcome-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.outcome-item {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.outcome-label {
+  color: #999;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  min-width: 120px;
+}
+
+.outcome-value {
+  color: #fff;
+  font-weight: bold;
+}
+
+.outcome-value.winner {
+  color: #0f0;
+  font-size: 1.2rem;
+  text-shadow: 0 0 10px #0f0;
+}
+
+.outcome-value.no-winner {
+  color: #fa0;
 }
 </style>

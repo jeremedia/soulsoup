@@ -12,7 +12,7 @@
       <h4>Active Souls</h4>
       <div class="incarnations-list">
         <% team_data[:active].each do |incarnation| %>
-          <%= render "incarnation_card", incarnation: incarnation, status: "active" %>
+          <%= render "forge_sessions/incarnation_card", incarnation: incarnation, status: "active" %>
         <% end %>
         <% if team_data[:active].empty? %>
           <div class="empty-state">No active souls</div>
@@ -24,7 +24,7 @@
       <h4>Deceased Souls</h4>
       <div class="incarnations-list">
         <% team_data[:deceased].each do |incarnation| %>
-          <%= render "incarnation_card", incarnation: incarnation, status: "deceased" %>
+          <%= render "forge_sessions/incarnation_card", incarnation: incarnation, status: "deceased" %>
         <% end %>
         <% if team_data[:deceased].empty? %>
           <div class="empty-state">No deceased souls</div>
@@ -40,6 +40,16 @@
   border: 1px solid #333;
   border-radius: 5px;
   padding: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.team-panel.updating {
+  animation: highlight 1s ease;
+}
+
+@keyframes highlight {
+  0% { border-color: #0f0; box-shadow: 0 0 10px #0f0; }
+  100% { border-color: #333; box-shadow: none; }
 }
 
 .team-header {

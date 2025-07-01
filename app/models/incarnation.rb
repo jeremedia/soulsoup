@@ -55,6 +55,10 @@ class Incarnation < ApplicationRecord
     
     # Trigger post-incarnation processing
     ProcessIncarnationJob.perform_later(self)
+  rescue => e
+    Rails.logger.error "Failed to end incarnation #{incarnation_id}: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+    raise
   end
   
   def personality_hints
@@ -165,7 +169,7 @@ class Incarnation < ApplicationRecord
       locals: { incarnation: self }
       
     broadcast_dashboard_stats
-    # broadcast_team_update if forge_session # TODO: Enable after views created
+    broadcast_team_update if forge_session
   end
   
   def broadcast_incarnation_updated
@@ -175,15 +179,18 @@ class Incarnation < ApplicationRecord
       locals: { incarnation: self }
       
     broadcast_dashboard_stats if saved_change_to_ended_at?
-    # broadcast_team_update if forge_session && saved_change_to_ended_at? # TODO: Enable after views created
+    broadcast_team_update if forge_session && saved_change_to_ended_at?
   end
   
   def broadcast_team_update
+    return unless forge_session.present?
+    
     # Update the team display in the forge session
-    broadcast_replace_to "forge_session_#{forge_session.id}",
+    # Note: We need to disable layout to prevent issues with nested partials
+    broadcast_replace_later_to "forge_session_#{forge_session.id}",
       target: "team_#{team}",
-      partial: "forge_sessions/team",
-      locals: { session: forge_session, team: team }
+      partial: "forge_sessions/team_panel",
+      locals: { session: forge_session, team: team, team_data: forge_session.team_data_for(team) }
   end
   
   def broadcast_dashboard_stats
