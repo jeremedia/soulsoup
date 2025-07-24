@@ -54,7 +54,7 @@ gem "ollama-ai", "~> 1.0"
 
 # API and structured data
 gem "jsonb_accessor", "~> 1.0" # JSONB helpers
-gem "alba", "~> 3.0" # Fast JSON serialization
+gem "alba", "~> 3.7" # Fast JSON serialization
 
 # Pagination
 gem "kaminari", "~> 1.2"
