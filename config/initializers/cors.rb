@@ -7,17 +7,11 @@
 
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-    # Allow requests from the Vite dev server and production
-    origins "http://localhost:5173",
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:3038",           # Soulforge dev server
-            "https://jeremedia.com",
-            "https://www.jeremedia.com"
+    origins "*"  # Allow all origins
 
     resource "*",
       headers: :any,
       methods: [:get, :post, :put, :patch, :delete, :options, :head],
-      credentials: false  # Changed to false for API-only requests
+      credentials: false  # Must be false when origins is "*"
   end
 end
