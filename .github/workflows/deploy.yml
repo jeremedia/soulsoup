@@ -1,0 +1,120 @@
+name: Deploy to jer-serve
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install --jobs 4 --retry 3
+
+      - name: Precompile assets
+        run: |
+          RAILS_ENV=production SECRET_KEY_BASE=dummy bundle exec rails assets:precompile
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          # Copy application files
+          cp -r app bin config db lib public vendor Gemfile Gemfile.lock Rakefile config.ru deploy/
+          # Copy precompiled assets
+          cp -r public/assets deploy/public/ 2>/dev/null || true
+          # Create tarball
+          cd deploy && tar -czf ../soulsoup-${{ github.event.release.tag_name }}.tar.gz .
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.JUMP_HOST_SSH_KEY }}" > ~/.ssh/jump_host_key
+          chmod 600 ~/.ssh/jump_host_key
+          ssh-keyscan -H 143.110.147.77 >> ~/.ssh/known_hosts
+          ssh-keyscan -H 100.74.87.20 >> ~/.ssh/known_hosts
+
+      - name: Deploy to jer-serve
+        run: |
+          # SSH through jump host to jer-serve
+          ssh -i ~/.ssh/jump_host_key -o ProxyCommand="ssh -i ~/.ssh/jump_host_key -W %h:%p root@143.110.147.77" jeremy@100.74.87.20 '
+            # Create app directory if it doesn'\''t exist
+            mkdir -p ~/apps/soulsoup
+
+            # Stop the service if running
+            sudo systemctl stop puma-soulsoup || true
+          '
+
+          # Copy deployment package through jump host
+          scp -i ~/.ssh/jump_host_key -o ProxyCommand="ssh -i ~/.ssh/jump_host_key -W %h:%p root@143.110.147.77" \
+            soulsoup-${{ github.event.release.tag_name }}.tar.gz jeremy@100.74.87.20:~/apps/soulsoup/
+
+          # Extract and configure on jer-serve
+          ssh -i ~/.ssh/jump_host_key -o ProxyCommand="ssh -i ~/.ssh/jump_host_key -W %h:%p root@143.110.147.77" jeremy@100.74.87.20 '
+            cd ~/apps/soulsoup
+
+            # Backup current version
+            if [ -d current ]; then
+              mv current backup-$(date +%Y%m%d-%H%M%S)
+            fi
+
+            # Extract new version
+            mkdir -p current
+            tar -xzf soulsoup-${{ github.event.release.tag_name }}.tar.gz -C current/
+            cd current
+
+            # Install dependencies
+            bundle install --deployment --without development test
+
+            # Run database migrations
+            RAILS_ENV=production bundle exec rails db:migrate
+
+            # Set up systemd service if not exists
+            if [ ! -f /etc/systemd/system/puma-soulsoup.service ]; then
+              sudo tee /etc/systemd/system/puma-soulsoup.service > /dev/null <<EOF
+[Unit]
+Description=Puma HTTP Server for Soulsoup
+After=network.target
+
+[Service]
+Type=simple
+User=jeremy
+WorkingDirectory=/home/jeremy/apps/soulsoup/current
+Environment=RAILS_ENV=production
+Environment=PORT=4001
+ExecStart=/home/jeremy/.rbenv/shims/bundle exec puma -C config/puma.rb
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+              sudo systemctl daemon-reload
+              sudo systemctl enable puma-soulsoup
+            fi
+
+            # Start the service
+            sudo systemctl start puma-soulsoup
+
+            # Cleanup old backups (keep last 3)
+            ls -t backup-* 2>/dev/null | tail -n +4 | xargs rm -rf 2>/dev/null || true
+          '
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          ssh -i ~/.ssh/jump_host_key -o ProxyCommand="ssh -i ~/.ssh/jump_host_key -W %h:%p root@143.110.147.77" jeremy@100.74.87.20 '
+            sudo systemctl status puma-soulsoup
+          '
