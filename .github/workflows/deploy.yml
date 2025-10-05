@@ -3,6 +3,7 @@ name: Deploy to jer-serve
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -94,8 +95,8 @@ Type=simple
 User=jeremy
 WorkingDirectory=/home/jeremy/apps/soulsoup/current
 Environment=RAILS_ENV=production
-Environment=PORT=4001
-ExecStart=/home/jeremy/.rbenv/shims/bundle exec puma -C config/puma.rb
+Environment=PORT=4002
+ExecStart=/bin/bash -lc "cd /home/jeremy/apps/soulsoup/current && bundle exec puma -C config/puma.rb"
 Restart=always
 
 [Install]
