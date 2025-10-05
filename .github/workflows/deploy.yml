@@ -40,6 +40,9 @@ jobs:
           if [ -z "$DEPLOY_TAG" ]; then
             DEPLOY_TAG="${{ github.event.inputs.tag }}"
           fi
+          if [ -z "$DEPLOY_TAG" ]; then
+            DEPLOY_TAG="${{ github.ref_name }}"
+          fi
 
           if [ -z "$DEPLOY_TAG" ]; then
             echo "❌ No release tag specified for deployment"
