@@ -83,6 +83,8 @@ class Incarnation < ApplicationRecord
   
   def apply_experience_event(event_type, context = {})
     # This will be called by the event processing system
+    # Ensure context is always a hash
+    context ||= {}
     experience_gained = calculate_experience_for_event(event_type, context)
     increment!(:events_count)
     increment!(:total_experience, experience_gained)
@@ -128,18 +130,22 @@ class Incarnation < ApplicationRecord
       "discovery_made" => 3.0,
       "soul_nurtured" => 1.8
     }
-    
+
     base = base_values[event_type] || 0.1
-    
+
+    # Ensure context is a hash before accessing keys
+    context = context.to_h if context.respond_to?(:to_h)
+    context ||= {}
+
     # Apply context modifiers
     if context[:difficulty]
       base *= (1 + context[:difficulty] * 0.5)
     end
-    
+
     if context[:against_vendetta_soul]
       base *= 1.5
     end
-    
+
     base
   end
   

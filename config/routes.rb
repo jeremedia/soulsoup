@@ -42,6 +42,10 @@ Rails.application.routes.draw do
           patch :end
         end
       end
+
+      namespace :commentary do
+        post :game
+      end
     end
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
