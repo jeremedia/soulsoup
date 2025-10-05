@@ -1,121 +1,85 @@
-name: Deploy to jer-serve
+name: Deploy to Production
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to deploy (e.g., v0.2.0)'
+        required: false
+        default: ''
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - name: Deploy Release to Production
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        # Target server (jer-serve via Tailscale)
+        host: 100.74.87.20
+        username: jeremy
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        port: 22
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+        # Jump host (Caddy server with public IP)
+        proxy_host: 143.110.147.77
+        proxy_username: root
+        proxy_key: ${{ secrets.JUMP_HOST_SSH_KEY }}
+        proxy_port: 22
 
-      - name: Install dependencies
-        run: bundle install --jobs 4 --retry 3
+        # Deployment script
+        script: |
+          cd /home/jeremy/apps/soulsoup
 
-      - name: Precompile assets
-        run: |
-          RAILS_ENV=production SECRET_KEY_BASE=dummy bundle exec rails assets:precompile
+          # Determine which tag to deploy
+          DEPLOY_TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$DEPLOY_TAG" ]; then
+            DEPLOY_TAG="${{ github.event.inputs.tag }}"
+          fi
 
-      - name: Create deployment package
-        run: |
-          mkdir -p deploy
-          # Copy application files
-          cp -r app bin config db lib public vendor Gemfile Gemfile.lock Rakefile config.ru deploy/
-          # Copy precompiled assets
-          cp -r public/assets deploy/public/ 2>/dev/null || true
-          # Create tarball
-          cd deploy && tar -czf ../soulsoup-${{ github.event.release.tag_name }}.tar.gz .
+          if [ -z "$DEPLOY_TAG" ]; then
+            echo "❌ No release tag specified for deployment"
+            exit 1
+          fi
 
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          echo "${{ secrets.JUMP_HOST_SSH_KEY }}" > ~/.ssh/jump_host_key
-          chmod 600 ~/.ssh/jump_host_key
-          ssh-keyscan -H 143.110.147.77 >> ~/.ssh/known_hosts
-          ssh-keyscan -H 100.74.87.20 >> ~/.ssh/known_hosts
+          echo "🚀 Deploying Soulsoup API release: $DEPLOY_TAG"
 
-      - name: Deploy to jer-serve
-        run: |
-          # SSH through jump host to jer-serve
-          ssh -i ~/.ssh/jump_host_key -o ProxyCommand="ssh -i ~/.ssh/jump_host_key -W %h:%p root@143.110.147.77" jeremy@100.74.87.20 '
-            # Create app directory if it doesn'\''t exist
-            mkdir -p ~/apps/soulsoup
+          # Fetch latest tags and changes
+          git fetch --all --tags
 
-            # Stop the service if running
-            sudo systemctl stop puma-soulsoup || true
-          '
+          # Checkout the specific release tag
+          git checkout tags/$DEPLOY_TAG -f
 
-          # Copy deployment package through jump host
-          scp -i ~/.ssh/jump_host_key -o ProxyCommand="ssh -i ~/.ssh/jump_host_key -W %h:%p root@143.110.147.77" \
-            soulsoup-${{ github.event.release.tag_name }}.tar.gz jeremy@100.74.87.20:~/apps/soulsoup/
+          # Setup Ruby environment with RVM
+          source /usr/share/rvm/scripts/rvm
+          rvm use 3.4.5
 
-          # Extract and configure on jer-serve
-          ssh -i ~/.ssh/jump_host_key -o ProxyCommand="ssh -i ~/.ssh/jump_host_key -W %h:%p root@143.110.147.77" jeremy@100.74.87.20 '
-            cd ~/apps/soulsoup
+          # Install/update dependencies
+          bundle install --deployment --without development test
 
-            # Backup current version
-            if [ -d current ]; then
-              mv current backup-$(date +%Y%m%d-%H%M%S)
-            fi
+          # Run database migrations
+          RAILS_ENV=production bundle exec rails db:migrate
 
-            # Extract new version
-            mkdir -p current
-            tar -xzf soulsoup-${{ github.event.release.tag_name }}.tar.gz -C current/
-            cd current
+          # Precompile assets
+          RAILS_ENV=production bundle exec rails assets:precompile
 
-            # Install dependencies
-            bundle install --deployment --without development test
+          # Clear Rails cache
+          RAILS_ENV=production bundle exec rails tmp:clear
 
-            # Run database migrations
-            RAILS_ENV=production bundle exec rails db:migrate
+          # Restart service
+          echo "🔄 Restarting Soulsoup API service..."
+          sudo systemctl restart puma-soulsoup.service
 
-            # Set up systemd service if not exists
-            if [ ! -f /etc/systemd/system/puma-soulsoup.service ]; then
-              sudo tee /etc/systemd/system/puma-soulsoup.service > /dev/null <<EOF
-[Unit]
-Description=Puma HTTP Server for Soulsoup
-After=network.target
+          # Wait for service to start
+          sleep 5
 
-[Service]
-Type=simple
-User=jeremy
-WorkingDirectory=/home/jeremy/apps/soulsoup/current
-Environment=RAILS_ENV=production
-Environment=PORT=4002
-ExecStart=/bin/bash -lc "cd /home/jeremy/apps/soulsoup/current && bundle exec puma -C config/puma.rb"
-Restart=always
+          # Check service status
+          echo "📊 Service status:"
+          sudo systemctl status puma-soulsoup.service --no-pager
 
-[Install]
-WantedBy=multi-user.target
-EOF
-              sudo systemctl daemon-reload
-              sudo systemctl enable puma-soulsoup
-            fi
-
-            # Start the service
-            sudo systemctl start puma-soulsoup
-
-            # Cleanup old backups (keep last 3)
-            ls -t backup-* 2>/dev/null | tail -n +4 | xargs rm -rf 2>/dev/null || true
-          '
-
-      - name: Verify deployment
-        run: |
-          sleep 10
-          ssh -i ~/.ssh/jump_host_key -o ProxyCommand="ssh -i ~/.ssh/jump_host_key -W %h:%p root@143.110.147.77" jeremy@100.74.87.20 '
-            sudo systemctl status puma-soulsoup
-          '
+          echo "✅ Soulsoup API release $DEPLOY_TAG deployed successfully!"
+          echo "🌐 Live at: https://api.animarium.app"
