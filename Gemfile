@@ -44,7 +44,7 @@ gem "thruster", require: false
 # gem "image_processing", "~> 1.2"
 
 # Soul persistence and event sourcing
-gem "rails_event_store", "~> 2.0"
+gem "rails_event_store", "~> 2.17"
 gem "neighbor" # pg_vector support
 gem "nanoid", "~> 2.0" # For generating soul IDs
 
