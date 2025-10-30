@@ -74,7 +74,7 @@ GEM
       uri (>= 0.13.1)
     aggregate_root (2.16.0)
       ruby_event_store (= 2.16.0)
-    alba (3.7.3)
+    alba (3.9.1)
     arkency-command_bus (0.4.1)
       concurrent-ruby
     ast (2.4.3)
@@ -423,7 +423,7 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
-  alba (~> 3.0)
+  alba (~> 3.9)
   better_errors
   binding_of_caller
   bootsnap
